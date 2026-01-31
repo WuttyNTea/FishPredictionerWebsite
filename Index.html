@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tab Menu Website</title>
+
+<!-- TensorFlow + Teachable Machine -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(180deg, #cceeff, #eef8ff);
+}
+
+.container {
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+
+.tabs {
+    display: flex;
+    background: #1e3a5f;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 14px;
+    background: none;
+    border: none;
+    color: #cfdfff;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.tab-btn.active {
+    background: white;
+    color: #1e3a5f;
+    font-weight: bold;
+}
+
+.content {
+    display: none;
+    padding: 32px 20px;
+    text-align: center;
+}
+
+.content.active {
+    display: block;
+}
+
+/* ---------- Teachable Machine Card ---------- */
+
+.tm-card h3 {
+    margin-top: 0;
+}
+
+.hint {
+    font-size: 14px;
+    color: #666;
+}
+
+.upload-btn {
+    display: inline-block;
+    margin: 18px 0;
+    padding: 12px 22px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upload-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+#image-upload {
+    display: none;
+}
+
+.preview {
+    margin: 20px 0;
+    min-height: 180px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.preview img {
+    max-width: 100%;
+    max-height: 180px;
+    border-radius: 14px;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: all 0.4s ease;
+}
+
+.preview img.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.result {
+    margin-top: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #1e3a5f;
+    min-height: 28px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="home">Home</button>
+        <button class="tab-btn" data-tab="check">Check</button>
+        <button class="tab-btn" data-tab="about">About Us</button>
+    </div>
+
+    <!-- Home -->
+    <div id="home" class="content active">
+        <h2>Home</h2>
+        <p>
+            ยินดีต้อนรับ  
+            เว็บนี้มี tab มี AI และมีความพยายาม  
+            ทุกอย่างอยู่ตรงกลาง ไม่หลง ไม่หลุด
+        </p>
+    </div>
+
+    <!-- Check -->
+    <div id="check" class="content">
+        <h3>Teachable Machine</h3>
+        <p class="hint">อัปโหลดภาพ แล้วให้ AI คิดแทน</p>
+
+        <label for="image-upload" class="upload-btn">📷 เลือกภาพ</label>
+        <input id="image-upload" type="file" accept="image/*">
+
+        <div class="preview">
+            <img id="preview-image">
+        </div>
+
+        <div id="label-container" class="result">
+            รอภาพอยู่ อย่าเพิ่งกดดัน
+        </div>
+
+        <img id="hidden-image" style="display:none;">
+    </div>
+
+    <!-- About -->
+    <div id="about" class="content">
+        <h2>About Us</h2>
+        <p>
+            ตัวอย่างเว็บไซต์แบบ Tab Menu  
+            ไฟล์เดียว แต่ไม่มักง่าย  
+            ใช้ AI ได้จริง และ UX ไม่ทำร้ายจิตใจ
+        </p>
+    </div>
+
+</div>
+
+<script>
+/* ---------- Tab Menu ---------- */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
+
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+    });
+});
+
+/* ---------- Teachable Machine ---------- */
+const URL = "https://teachablemachine.withgoogle.com/models/DMdA8xgkn/";
+let model;
+
+window.addEventListener("load", async () => {
+    model = await tmImage.load(
+        URL + "model.json",
+        URL + "metadata.json"
+    );
+});
+
+document.getElementById("image-upload").addEventListener("change", handleImageUpload);
+
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        const hiddenImg = document.getElementById("hidden-image");
+        const previewImg = document.getElementById("preview-image");
+        const result = document.getElementById("label-container");
+
+        result.innerText = "กำลังคิดอยู่ ใจเย็น";
+        hiddenImg.src = e.target.result;
+        previewImg.src = e.target.result;
+
+        previewImg.classList.remove("show");
+        setTimeout(() => previewImg.classList.add("show"), 50);
+
+        hiddenImg.onload = () => predict(hiddenImg);
+    };
+    reader.readAsDataURL(file);
+}
+
+async function predict(image) {
+    const prediction = await model.predict(image);
+    const best = prediction.reduce((a, b) =>
+        a.probability > b.probability ? a : b
+    );
+
+    document.getElementById("label-container").innerText =
+        `${best.className} (${(best.probability * 100).toFixed(1)}%)`;
+}
+</script>
+
+</body>
+</html>
